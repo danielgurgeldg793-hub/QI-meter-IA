@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QI Meter Lab</title>
+
+  <!-- SDK do Mercado Pago -->
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+
+  <style>
+    :root {
+      --cor-principal: #4b9be0;
+      --cor-secundaria: #ffd54f;
+      --cor-fundo: #f0f8ff;
+      --cor-correto: #a5d6a7;
+      --cor-errado: #ef9a9a;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--cor-fundo);
+      color: #333;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: var(--cor-principal);
+      color: white;
+      padding: 20px 0;
+      font-size: 28px;
+      font-weight: bold;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .quiz-container {
+      width: 90%;
+      max-width: 650px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .question {
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+
+    .option {
+      display: block;
+      margin: 10px auto;
+      padding: 12px;
+      width: 90%;
+      border: none;
+      border-radius: 8px;
+      background: var(--cor-secundaria);
+      color: #333;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 18px;
+    }
+
+    .option:hover {
+      background: #ffe082;
+      transform: scale(1.03);
+    }
+
+    #timer {
+      font-size: 18px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    #next-btn {
+      margin-top: 20px;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      background: var(--cor-principal);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: 0.2s;
+      display: none;
+    }
+
+    #next-btn:hover {
+      background: #3b82d0;
+    }
+
+    #result {
+      display: none;
+      font-size: 22px;
+      padding: 10px;
+    }
+
+    footer {
+      margin-top: 40px;
+      font-size: 14px;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+  <header>🧠 QI Meter Lab</header>
+
+  <div class="quiz-container">
+    <div id="quiz">
+      <div id="timer">Tempo restante: <span id="time">15</span>s</div>
+      <div id="question-container"></div>
+      <button id="next-btn">Próxima</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <footer>© 2025 QI Meter Lab</footer>
+
+  <script>
+    // 🧩 Perguntas do Quiz
+    const questions = [
+      { question: "Qual número completa a sequência: 1, 4, 9, 16, ?", options: ["20", "25", "36", "49"], correct: 1, difficulty: 1 },
+      { question: "Se Maria é mãe de João e João é pai de Ana, qual o parentesco de Maria com Ana?", options: ["Tia", "Avó", "Prima", "Irmã"], correct: 1, difficulty: 1 },
+      { question: "Qual figura não pertence ao grupo: quadrado, triângulo, círculo, retângulo?", options: ["Círculo", "Triângulo", "Quadrado", "Retângulo"], correct: 0, difficulty: 1 },
+      { question: "Se 3 gatos pegam 3 ratos em 3 minutos, quantos gatos são necessários para pegar 100 ratos em 100 minutos?", options: ["3", "9", "33", "100"], correct: 0, difficulty: 2 },
+      { question: "Complete a sequência: A, C, F, J, O, ?", options: ["U", "V", "W", "X"], correct: 1, difficulty: 2 },
+      { question: "Se 5x + 10 = 25, qual é o valor de x?", options: ["2", "3", "4", "5"], correct: 1, difficulty: 1 },
+      { question: "Qual é o próximo número? 3, 6, 12, 24, 48, ?", options: ["72", "96", "100", "120"], correct: 1, difficulty: 2 }
+    ];
+
+    let current = 0;
+    let score = 0;
+    let totalDifficulty = 0;
+    let timer, timeLeft = 15;
+
+    const questionContainer = document.getElementById("question-container");
+    const nextBtn = document.getElementById("next-btn");
+    const result = document.getElementById("result");
+    const timeDisplay = document.getElementById("time");
+
+    // ⏱️ Inicia cronômetro
+    function startTimer() {
+      timeLeft = 15;
+      timeDisplay.textContent = timeLeft;
+      timer = setInterval(() => {
+        timeLeft--;
+        timeDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          disableOptions();
+          nextBtn.style.display = "inline-block";
+        }
+      }, 1000);
+    }
+
+    function showQuestion() {
+      clearInterval(timer);
+      nextBtn.style.display = "none";
+      const q = questions[current];
+      questionContainer.innerHTML = `
+        <div class="question">${current + 1}. ${q.question}</div>
+        ${q.options.map((opt, i) => `<button class="option" onclick="checkAnswer(${i})">${opt}</button>`).join("")}
+      `;
+      startTimer();
+    }
+
+    function disableOptions() {
+      const options = document.querySelectorAll(".option");
+      options.forEach(o => o.disabled = true);
+    }
+
+    function checkAnswer(selected) {
+      clearInterval(timer);
+      const q = questions[current];
+      const options = document.querySelectorAll(".option");
+      disableOptions();
+      options.forEach((opt, i) => {
+        if (i === q.correct) opt.style.backgroundColor = "var(--cor-correto)";
+        else if (i === selected) opt.style.backgroundColor = "var(--cor-errado)";
+      });
+
+      let basePoints = q.difficulty * 10;
+      let bonus = Math.max(0, timeLeft - 5);
+      if (selected === q.correct) score += basePoints + bonus;
+      totalDifficulty += q.difficulty;
+      nextBtn.style.display = "inline-block";
+    }
+
+    nextBtn.onclick = () => {
+      current++;
+      if (current < questions.length) showQuestion();
+      else showResult();
+    };
+
+    // 💰 Tela de resultado com pagamento Mercado Pago
+    function showResult() {
+      document.getElementById("quiz").style.display = "none";
+      result.style.display = "block";
+
+      const maxScore = totalDifficulty * 10 + 10; 
+      const ratio = score / maxScore;
+      const iq = Math.round(60 + ratio * 80);
+
+      let faixa = "";
+      if (iq < 85) faixa = "70–85";
+      else if (iq < 100) faixa = "85–100";
+      else if (iq < 120) faixa = "100–120";
+      else faixa = "120–140";
+
+      result.innerHTML = `
+        <h2>Resultado Parcial</h2>
+        <p>Quer ver seu <strong>QI exato</strong>?</p>
+        <p>Pague apenas <strong>R$1</strong> para revelar o resultado completo.</p>
+        <button id="pay-btn" style="padding:12px 20px;border:none;border-radius:8px;background:#4b9be0;color:white;font-size:18px;cursor:pointer;">💸 Pagar R$1</button>
+        <button id="skip-btn" style="padding:12px 20px;border:none;border-radius:8px;background:#ccc;color:#333;font-size:18px;margin-left:10px;cursor:pointer;">Ver estimativa gratuita</button>
+      `;
+
+      document.getElementById("pay-btn").onclick = () => {
+        // ⚠️ Substitua as chaves abaixo pelas suas
+        const mp = new MercadoPago("SUA_PUBLIC_KEY_AQUI", {
+          locale: "pt-BR"
+        });
+
+        fetch("https://api.mercadopago.com/checkout/preferences", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer SEU_ACCESS_TOKEN_AQUI",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            items: [{
+              title: "Revelar QI exato - QI Meter Lab",
+              quantity: 1,
+              currency_id: "BRL",
+              unit_price: 1.00
+            }],
+            back_urls: {
+              success: window.location.href + "?success=true",
+              failure: window.location.href + "?failure=true"
+            },
+            auto_return: "approved"
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          mp.checkout({
+            preference: { id: data.id },
+            autoOpen: true,
+          });
+        })
+        .catch(err => {
+          alert("Erro ao iniciar pagamento: " + err.message);
+        });
+      };
+
+      document.getElementById("skip-btn").onclick = () => {
+        result.innerHTML = `
+          <h2>Estimativa Gratuita</h2>
+          <p>Seu QI estimado está entre <strong>${faixa}</strong>.</p>
+          <p>Para ver o resultado exato, volte e compre a versão completa 💡</p>
+        `;
+      };
+    }
+
+    showQuestion();
+  </script>
+</body>
+</html>
